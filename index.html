@@ -1,0 +1,711 @@
+<title>Six Guesses</title>
+<style>
+  :root {
+    --bg: #fbf4f0;
+    --bg-soft: #f4e8e2;
+    --ink: #2e2027;
+    --ink-soft: #7c6a72;
+    --line: #e0cec7;
+    --tile-border: #cdb9b1;
+    --accent: #c14f6b;
+    --accent-ink: #ffffff;
+    --good: #4e9a6f;
+    --near: #d2a24c;
+    --miss: #a1949a;
+    --key-bg: #ead9d2;
+    --key-ink: #3a2b33;
+    --card: #fffaf7;
+    --shadow: 0 20px 55px rgba(88, 44, 60, .16);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1c141a;
+      --bg-soft: #241a21;
+      --ink: #f5eaef;
+      --ink-soft: #ab9ca5;
+      --line: #3d2f38;
+      --tile-border: #4c3b45;
+      --accent: #e2718d;
+      --accent-ink: #24101a;
+      --good: #5fb184;
+      --near: #d9ad5e;
+      --miss: #52434b;
+      --key-bg: #392d35;
+      --key-ink: #f0e3e9;
+      --card: #261c23;
+      --shadow: 0 20px 55px rgba(0, 0, 0, .5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1c141a; --bg-soft: #241a21; --ink: #f5eaef; --ink-soft: #ab9ca5;
+    --line: #3d2f38; --tile-border: #4c3b45; --accent: #e2718d; --accent-ink: #24101a;
+    --good: #5fb184; --near: #d9ad5e; --miss: #52434b; --key-bg: #392d35;
+    --key-ink: #f0e3e9; --card: #261c23; --shadow: 0 20px 55px rgba(0,0,0,.5);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+  .serif { font-family: "Palatino", "Palatino Linotype", "Book Antiqua", Georgia, serif; }
+
+  /* ---------------- cover ---------------- */
+  #cover {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    flex: 1;
+    width: 100%;
+    max-width: 460px;
+    padding: 28px 22px 34px;
+    gap: 4px;
+    animation: fade .6s ease;
+  }
+  @keyframes fade { from { opacity: 0; transform: translateY(10px); } }
+  #cover .eyebrow {
+    font-size: 11.5px;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 18px;
+  }
+  #cover h1 {
+    font-family: "Palatino", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    font-size: clamp(38px, 12vw, 56px);
+    line-height: 1.02;
+    margin: 0 0 14px;
+    font-weight: 600;
+    text-wrap: balance;
+  }
+  #cover .lead {
+    color: var(--ink-soft);
+    font-size: 16px;
+    line-height: 1.55;
+    margin: 0 0 26px;
+    max-width: 33ch;
+  }
+  .rules {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 16px;
+    margin-bottom: 26px;
+    box-shadow: var(--shadow);
+  }
+  .rule { display: flex; align-items: center; gap: 12px; text-align: left; }
+  .rule .chip {
+    width: 34px; height: 34px; flex: none;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 17px; color: #fff;
+  }
+  .rule .chip.good { background: var(--good); }
+  .rule .chip.near { background: var(--near); }
+  .rule .chip.miss { background: var(--miss); }
+  .rule span { font-size: 14.5px; line-height: 1.4; color: var(--ink); }
+  .rule b { font-weight: 700; }
+
+  .btn {
+    font: inherit;
+    font-weight: 700;
+    border: none;
+    border-radius: 999px;
+    padding: 16px 40px;
+    font-size: 17px;
+    cursor: pointer;
+    background: var(--accent);
+    color: var(--accent-ink);
+    letter-spacing: .02em;
+    transition: transform .12s ease, filter .12s ease;
+  }
+  .btn:hover { filter: brightness(1.07); }
+  .btn:active { transform: scale(.97); }
+  .btn:focus-visible { outline: 3px solid var(--near); outline-offset: 3px; }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--tile-border); }
+  .btn.small { padding: 11px 20px; font-size: 14.5px; }
+
+  /* ---------------- game ---------------- */
+  #game { display: none; flex-direction: column; align-items: center; flex: 1; width: 100%; max-width: 520px; }
+  #game.show { display: flex; }
+
+  .gamehead {
+    width: 100%;
+    text-align: center;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .gamehead .title {
+    font-family: "Palatino", "Palatino Linotype", Georgia, serif;
+    font-size: 19px;
+    letter-spacing: .2em;
+    font-weight: 600;
+  }
+  .gamehead .meta { font-size: 12px; color: var(--ink-soft); margin-top: 3px; letter-spacing: .06em; }
+
+  #hintbar {
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 8px 10px 0;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    text-align: center;
+  }
+  #hintBtn {
+    font: inherit; font-size: 13px; font-weight: 700;
+    border: 1.5px solid var(--tile-border);
+    background: transparent; color: var(--ink);
+    border-radius: 999px; padding: 7px 15px; cursor: pointer;
+    display: none;
+  }
+  #hintBtn.show { display: inline-block; }
+  #hintBtn:active { transform: scale(.96); }
+
+  #board { display: flex; flex-direction: column; gap: 6px; padding: 10px 0 4px; }
+  .row { display: flex; gap: 6px; justify-content: center; }
+  .tile {
+    width: var(--tileSize, 58px);
+    height: var(--tileSize, 58px);
+    border: 2px solid var(--tile-border);
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: calc(var(--tileSize, 58px) * .48);
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: transparent;
+  }
+  .tile.filled { border-color: var(--ink-soft); animation: pop .1s ease; }
+  @keyframes pop { 50% { transform: scale(1.08); } }
+  .tile.reveal { animation: flip .5s ease forwards; }
+  @keyframes flip {
+    0% { transform: rotateX(0); }
+    49%, 51% { transform: rotateX(90deg); }
+    100% { transform: rotateX(0); }
+  }
+  .tile.good { background: var(--good); border-color: var(--good); color: #fff; }
+  .tile.near { background: var(--near); border-color: var(--near); color: #fff; }
+  .tile.miss { background: var(--miss); border-color: var(--miss); color: #fff; }
+  .tile.ghost { color: var(--ink-soft); opacity: .55; }
+  .row.shake { animation: shake .4s ease; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%,60% { transform: translateX(-6px); }
+    40%,80% { transform: translateX(6px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tile.reveal, .row.shake, .tile.filled, #cover, .askCard { animation: none; }
+  }
+
+  #keyboard { display: flex; flex-direction: column; gap: 7px; width: 100%; max-width: 500px; margin-top: auto; padding: 10px 5px calc(10px + env(safe-area-inset-bottom)); }
+  .krow { display: flex; gap: 5px; justify-content: center; }
+  .key {
+    flex: 1;
+    max-width: 44px;
+    height: 56px;
+    border: none;
+    border-radius: 7px;
+    background: var(--key-bg);
+    color: var(--key-ink);
+    font: inherit;
+    font-weight: 700;
+    font-size: 15px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background .25s ease, transform .05s ease;
+    touch-action: manipulation;
+  }
+  .key:active { transform: scale(.93); }
+  .key.wide { max-width: 72px; flex: 1.7; font-size: 12px; letter-spacing: .04em; }
+  .key.enter { background: var(--accent); color: var(--accent-ink); }
+  .key.good { background: var(--good); color: #fff; }
+  .key.near { background: var(--near); color: #fff; }
+  .key.miss { background: var(--miss); color: #fff; }
+  .key:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  #toast {
+    position: fixed; top: 16px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink); color: var(--bg);
+    padding: 11px 20px; border-radius: 999px;
+    font-weight: 700; font-size: 14px;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s ease;
+    z-index: 60; max-width: 90vw; text-align: center;
+  }
+  #toast.show { opacity: 1; }
+
+  /* ---------------- the question ---------------- */
+  #askOverlay {
+    position: fixed; inset: 0;
+    background: color-mix(in srgb, var(--bg) 90%, transparent);
+    backdrop-filter: blur(7px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 40; padding: 20px;
+  }
+  #askOverlay.show { display: flex; }
+  .askCard {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    padding: 42px 28px 36px;
+    max-width: 420px; width: 100%;
+    text-align: center;
+    animation: rise .55s cubic-bezier(.2,.9,.3,1.15);
+  }
+  @keyframes rise { from { transform: translateY(34px) scale(.94); opacity: 0; } }
+  .askCard .pre {
+    font-size: 11.5px; letter-spacing: .26em; text-transform: uppercase;
+    color: var(--ink-soft); margin: 0 0 16px; line-height: 1.6;
+  }
+  .askCard h2 {
+    font-family: "Palatino", "Palatino Linotype", Georgia, serif;
+    font-size: clamp(27px, 8vw, 37px);
+    margin: 0 0 10px; line-height: 1.18; text-wrap: balance;
+  }
+  .askCard .from { color: var(--ink-soft); font-size: 15px; margin: 0 0 28px; }
+  .yesRow { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  #saidYes { display: none; }
+  #saidYes .big { font-size: 46px; display: block; margin-bottom: 10px; }
+  #saidYes .line {
+    font-family: "Palatino", "Palatino Linotype", Georgia, serif;
+    font-size: 27px; margin-bottom: 10px;
+  }
+  #saidYes .sub { color: var(--ink-soft); font-size: 14.5px; line-height: 1.55; }
+
+  canvas#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+</style>
+
+<!-- ============ COVER ============ -->
+<section id="cover">
+  <div class="eyebrow" id="coverEyebrow">A puzzle for you</div>
+  <h1 id="coverTitle">Six guesses.</h1>
+  <p class="lead" id="coverLead">Someone made you a word game. The word is not random.</p>
+
+  <div class="rules">
+    <div class="rule"><div class="chip good">C</div><span><b>Green</b> &#x2014; right letter, right spot.</span></div>
+    <div class="rule"><div class="chip near">O</div><span><b>Yellow</b> &#x2014; right letter, wrong spot.</span></div>
+    <div class="rule"><div class="chip miss">Z</div><span><b>Grey</b> &#x2014; that letter isn't in the word.</span></div>
+  </div>
+
+  <button class="btn" id="startBtn">Start</button>
+</section>
+
+<!-- ============ GAME ============ -->
+<section id="game">
+  <div class="gamehead">
+    <div class="title" id="gameTitle">SIX GUESSES</div>
+    <div class="meta" id="gameMeta">6 letters &#xb7; guess 1 of 6</div>
+  </div>
+  <div id="hintbar"><button id="hintBtn" type="button">Need a hint?</button></div>
+  <div id="board"></div>
+  <div id="keyboard"></div>
+</section>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- ============ THE QUESTION ============ -->
+<div id="askOverlay">
+  <div class="askCard">
+    <div id="askContent">
+      <p class="pre" id="askPre">You solved it. So &#x2014; one more question.</p>
+      <h2 id="askQuestion">Will you go out with me?</h2>
+      <p class="from" id="askFrom"></p>
+      <div class="yesRow">
+        <button class="btn" id="yesBtn">Yes &#x1f498;</button>
+        <button class="btn ghost" id="yesBtn2">Obviously yes</button>
+      </div>
+    </div>
+    <div id="saidYes">
+      <span class="big">&#x1f942;</span>
+      <div class="line" id="yesLine">It's a date.</div>
+      <div class="sub" id="yesSub">Screenshot this and send it to him.</div>
+    </div>
+  </div>
+</div>
+
+<canvas id="confetti"></canvas>
+
+<script>
+/* =======================================================================
+   The puzzle is stored encoded below so the word is not sitting in the
+   page source in plain text. Nothing here is readable at a glance.
+   ======================================================================= */
+var P = "IH4qMS0EQ2F+DQwWNiAPGX9yfQgEKRI8MzpCW3l+cXw5Eg42fmd8fUxDKik4LSsJDjV+Z3wICQ03fCQxKkAGNHwyKytAFjIoNX4yBV55cH8nOhMtMjI4fGVCKC++3ccsQAB7ODwqOk5Dd34kOywzFDl+Z3wMAxM+OTMtNw8Veyg1NyxAADU4fS06DgV7NSl+Kw9BMzUwcH0d";
+var hintAfter = 3;   // she can ask for a hint after this many guesses
+/* ===================================================================== */
+
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+
+  function unpack(b) {
+    var raw = atob(b), out = "";
+    for (var i = 0; i < raw.length; i++) {
+      out += String.fromCharCode(raw.charCodeAt(i) ^ (0x5b + (i % 7)));
+    }
+    return JSON.parse(decodeURIComponent(escape(out)));
+  }
+  var CONFIG = unpack(P);
+  CONFIG.hintAfter = hintAfter;
+
+  // Make sure phones render at device width even though we can't author <head>.
+  (function () {
+    if (!document.querySelector('meta[name="viewport"]')) {
+      var m = document.createElement("meta");
+      m.name = "viewport";
+      m.content = "width=device-width, initial-scale=1, viewport-fit=cover";
+      document.head.appendChild(m);
+    }
+  })();
+
+  var WORD = String(CONFIG.word).toUpperCase().replace(/[^A-Z]/g, "");
+  var LEN = WORD.length;
+  var MAX_GUESSES = 6;
+  // Storage key is derived, so the word never lands in browser storage either.
+  var KEY = (function () {
+    var h = 5381;
+    for (var i = 0; i < P.length; i++) h = ((h * 33) ^ P.charCodeAt(i)) >>> 0;
+    return "sg:" + h.toString(36) + ":v1";
+  })();
+
+  /* ---------- personalise the cover ---------- */
+  if (CONFIG.herName) {
+    $("coverEyebrow").textContent = "For " + CONFIG.herName;
+    $("coverLead").textContent = "Someone made you a word game, " + CONFIG.herName + ". The word is not random.";
+  }
+  $("gameMeta").textContent = LEN + " letters \u00b7 guess 1 of " + MAX_GUESSES;
+  $("askQuestion").textContent = CONFIG.question;
+  $("yesLine").textContent = CONFIG.yesLine;
+  $("yesSub").textContent = CONFIG.yesSub;
+  if (CONFIG.from) $("askFrom").textContent = CONFIG.from;
+
+  /* ---------- saved progress (survives closing the tab) ---------- */
+  function load() {
+    try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { return null; }
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify({ guesses: guesses, hints: hintsUsed, finished: finished })); } catch (e) {}
+  }
+  var saved = load();
+  var guesses = (saved && saved.guesses) || [];
+  var hintsUsed = (saved && saved.hints) || 0;
+  var finished = !!(saved && saved.finished);
+
+  /* ---------- build the board ---------- */
+  function sizeTiles() {
+    var w = Math.min(window.innerWidth, 520) - 24;
+    var size = Math.max(38, Math.min(60, Math.floor((w - (LEN - 1) * 6) / LEN)));
+    document.documentElement.style.setProperty("--tileSize", size + "px");
+  }
+  sizeTiles();
+  window.addEventListener("resize", sizeTiles);
+  window.addEventListener("orientationchange", sizeTiles);
+
+  var board = $("board"), rows = [];
+  for (var r = 0; r < MAX_GUESSES; r++) {
+    var row = document.createElement("div");
+    row.className = "row";
+    var tiles = [];
+    for (var c = 0; c < LEN; c++) {
+      var t = document.createElement("div");
+      t.className = "tile";
+      row.appendChild(t);
+      tiles.push(t);
+    }
+    board.appendChild(row);
+    rows.push({ el: row, tiles: tiles });
+  }
+
+  /* ---------- keyboard ---------- */
+  var keyEls = {}, kb = $("keyboard");
+  ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"].forEach(function (line, i) {
+    var krow = document.createElement("div");
+    krow.className = "krow";
+    if (i === 2) krow.appendChild(makeKey("ENTER", "wide enter"));
+    line.split("").forEach(function (ch) { krow.appendChild(makeKey(ch, "")); });
+    if (i === 2) krow.appendChild(makeKey("\u232b", "wide"));
+    kb.appendChild(krow);
+  });
+  function makeKey(label, extra) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "key" + (extra ? " " + extra : "");
+    b.textContent = label;
+    b.setAttribute("aria-label", label === "\u232b" ? "Delete" : label);
+    b.addEventListener("click", function () { handleKey(label); });
+    if (label.length === 1) keyEls[label] = b;
+    return b;
+  }
+
+  var cur = 0, pos = 0, locked = false;
+
+  /* ---------- scoring (matches real Wordle on repeated letters) ---------- */
+  function score(guess) {
+    var result = new Array(LEN).fill("miss"), remaining = {};
+    for (var i = 0; i < LEN; i++) {
+      if (guess[i] === WORD[i]) result[i] = "good";
+      else remaining[WORD[i]] = (remaining[WORD[i]] || 0) + 1;
+    }
+    for (var j = 0; j < LEN; j++) {
+      if (result[j] === "miss" && remaining[guess[j]] > 0) { result[j] = "near"; remaining[guess[j]]--; }
+    }
+    return result;
+  }
+
+  var rank = { miss: 0, near: 1, good: 2 };
+  function paintKey(ch, res) {
+    var el = keyEls[ch];
+    if (!el) return;
+    var now = el.classList.contains("good") ? "good"
+            : el.classList.contains("near") ? "near"
+            : el.classList.contains("miss") ? "miss" : null;
+    if (!now || rank[res] > rank[now]) {
+      el.classList.remove("good", "near", "miss");
+      el.classList.add(res);
+    }
+  }
+
+  /* ---------- replay any saved guesses instantly ---------- */
+  guesses.forEach(function (g) {
+    var row = rows[cur], res = score(g);
+    for (var i = 0; i < LEN; i++) {
+      row.tiles[i].textContent = g[i];
+      row.tiles[i].classList.add(res[i]);
+      paintKey(g[i], res[i]);
+    }
+    cur++;
+  });
+  applyHints();
+  updateMeta();
+
+  var alreadyWon = guesses.length && guesses[guesses.length - 1] === WORD;
+  if (alreadyWon || cur >= MAX_GUESSES) locked = true;
+
+  /* ---------- input ---------- */
+  document.addEventListener("keydown", function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "Enter") { handleKey("ENTER"); e.preventDefault(); }
+    else if (e.key === "Backspace") { handleKey("\u232b"); e.preventDefault(); }
+    else if (/^[a-zA-Z]$/.test(e.key)) handleKey(e.key.toUpperCase());
+  });
+
+  function handleKey(k) {
+    if (locked) return;
+    var row = rows[cur];
+    if (!row) return;
+    if (k === "\u232b") {
+      if (pos > 0) {
+        pos--;
+        row.tiles[pos].textContent = "";
+        row.tiles[pos].classList.remove("filled");
+      }
+      return;
+    }
+    if (k === "ENTER") { submit(); return; }
+    if (pos < LEN) {
+      row.tiles[pos].textContent = k;
+      row.tiles[pos].classList.add("filled");
+      row.tiles[pos].classList.remove("ghost");
+      pos++;
+    }
+  }
+
+  function submit() {
+    var row = rows[cur];
+    if (pos < LEN) {
+      row.el.classList.add("shake");
+      setTimeout(function () { row.el.classList.remove("shake"); }, 450);
+      toast(LEN + " letters \u2014 you've got " + (LEN - pos) + " to go");
+      return;
+    }
+    var guess = row.tiles.map(function (t) { return t.textContent; }).join("");
+    var res = score(guess);
+    guesses.push(guess);
+    locked = true;
+
+    res.forEach(function (r, idx) {
+      setTimeout(function () {
+        var tile = row.tiles[idx];
+        tile.classList.add("reveal");
+        setTimeout(function () {
+          tile.classList.remove("ghost");
+          tile.classList.add(r);
+          paintKey(guess[idx], r);
+        }, 250);
+      }, idx * 240);
+    });
+
+    var won = guess === WORD;
+    setTimeout(function () {
+      cur++; pos = 0;
+      updateMeta();
+      save();
+      if (won || cur >= MAX_GUESSES) {
+        finished = true; save();
+        if (!won) $("askPre").textContent = "The word was \u201c" + WORD + "\u201d \u2014 which brings us to this.";
+        celebrate();
+        setTimeout(showAsk, won ? 850 : 500);
+        return;
+      }
+      locked = false;
+      applyHints();
+      maybeOfferHint();
+      var msgs = ["Good start.", "Getting warmer\u2026", "You're close. I can feel it.",
+                  "Two left \u2014 trust your gut.", "Last one. Make it count."];
+      toast(msgs[Math.min(cur - 1, msgs.length - 1)]);
+    }, LEN * 240 + 380);
+  }
+
+  function updateMeta() {
+    var n = Math.min(cur + 1, MAX_GUESSES);
+    $("gameMeta").textContent = LEN + " letters \u00b7 guess " + n + " of " + MAX_GUESSES;
+  }
+
+  /* ---------- hints: reveal one true letter at a time ---------- */
+  function maybeOfferHint() {
+    if (hintsUsed >= LEN - 1) return;
+    if (cur >= CONFIG.hintAfter) $("hintBtn").classList.add("show");
+  }
+  // Revealed letters are pre-typed into the row for her, every row from now on.
+  function applyHints() {
+    var row = rows[cur];
+    if (!row || !hintsUsed || finished) return;
+    row.tiles.forEach(function (t) { t.textContent = ""; t.classList.remove("filled"); });
+    pos = 0;
+    for (var i = 0; i < hintsUsed && i < LEN; i++) {
+      row.tiles[i].textContent = WORD[i];
+      row.tiles[i].classList.add("filled");
+      pos = i + 1;
+    }
+  }
+  $("hintBtn").addEventListener("click", function () {
+    if (locked || hintsUsed >= LEN - 1) return;
+    hintsUsed++;
+    save();
+    applyHints();
+    toast(hintsUsed === 1 ? "It starts with " + WORD[0] : "First " + hintsUsed + " letters, on the house");
+    if (hintsUsed >= LEN - 1) $("hintBtn").classList.remove("show");
+  });
+
+  /* ---------- toast ---------- */
+  var toastTimer;
+  function toast(msg) {
+    var t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove("show"); }, 1700);
+  }
+
+  /* ---------- the ask ---------- */
+  function showAsk() { $("askOverlay").classList.add("show"); }
+  function saidYes() {
+    $("askContent").style.display = "none";
+    $("saidYes").style.display = "block";
+    celebrate();
+  }
+  $("yesBtn").addEventListener("click", saidYes);
+  $("yesBtn2").addEventListener("click", saidYes);
+
+  /* ---------- start ---------- */
+  $("startBtn").addEventListener("click", function () {
+    $("cover").style.display = "none";
+    $("game").classList.add("show");
+    sizeTiles();
+    maybeOfferHint();
+    if (finished) setTimeout(showAsk, 400);
+  });
+  // Coming back mid-game? Skip the cover.
+  if (guesses.length) {
+    $("startBtn").textContent = "Keep going";
+    $("coverLead").textContent = "You're already partway in. Pick up where you left off.";
+  }
+
+  /* ---------- heart confetti ---------- */
+  var canvas = $("confetti"), ctx = canvas.getContext("2d");
+  function fit() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width = window.innerWidth + "px";
+    canvas.style.height = window.innerHeight + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  fit();
+  window.addEventListener("resize", fit);
+  var parts = [], running = false;
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function celebrate() {
+    if (reduced) return;
+    var W = window.innerWidth, H = window.innerHeight;
+    var colors = ["#e2718d", "#c14f6b", "#d9ad5e", "#f6cdd7", "#5fb184"];
+    for (var i = 0; i < 95; i++) {
+      parts.push({
+        x: Math.random() * W,
+        y: -20 - Math.random() * H * 0.5,
+        vx: (Math.random() - 0.5) * 1.7,
+        vy: 1.5 + Math.random() * 2.5,
+        size: 7 + Math.random() * 10,
+        rot: Math.random() * Math.PI * 2,
+        vr: (Math.random() - 0.5) * 0.11,
+        color: colors[i % colors.length],
+        heart: Math.random() < 0.6
+      });
+    }
+    if (!running) { running = true; requestAnimationFrame(tick); }
+  }
+  function drawHeart(p) {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    ctx.fillStyle = p.color;
+    var s = p.size / 16;
+    ctx.scale(s, s);
+    ctx.beginPath();
+    ctx.moveTo(0, 5);
+    ctx.bezierCurveTo(-9, -4, -4, -12, 0, -6);
+    ctx.bezierCurveTo(4, -12, 9, -4, 0, 5);
+    ctx.fill();
+    ctx.restore();
+  }
+  function tick() {
+    var W = window.innerWidth, H = window.innerHeight;
+    ctx.clearRect(0, 0, W, H);
+    parts = parts.filter(function (p) { return p.y < H + 40; });
+    parts.forEach(function (p) {
+      p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.vy += 0.013;
+      if (p.heart) drawHeart(p);
+      else {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+        ctx.restore();
+      }
+    });
+    if (parts.length) requestAnimationFrame(tick);
+    else { running = false; ctx.clearRect(0, 0, W, H); }
+  }
+})();
+</script>
